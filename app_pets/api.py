@@ -1,9 +1,10 @@
 import json
+import os
+import time
 
 from rest_framework import viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from django.core import serializers
 
 from app_pets.serializers import PetSerializer, PetImageSerializer
 from app_pets.models import Pet, PetImage
@@ -66,7 +67,9 @@ class PetViewSet(viewsets.ModelViewSet):
         ids = dict(request.data.lists()).get("ids")
         if ids:
             valid_ids, errors = check_ids(ids)
-            deleted_count, _ = Pet.objects.filter(id__in=valid_ids).delete()
+            pets = Pet.objects.filter(id__in=valid_ids)
+            deleted_count = pets.count()
+            pets.delete()
             response = {"deleted": deleted_count, "errors": errors}
             return Response(response)
         else:
@@ -90,37 +93,15 @@ def photo(request, id):
     id, error = check_ids([id])
     if error:
         return Response({"error": error}, status=400)
-    file_name = 'dads' + ".jpg"
-    file_path = f"/images/{file_name}"
-    with open(f"{settings.MEDIA_ROOT}{file_path}", "wb") as file:
+    pet = Pet.objects.get(id=id[0])
+    file_path = f"images/{pet.name}_{int(time.time())}.jpg"
+    full_path = os.path.join(settings.BASE_DIR, file_path)
+    with open(full_path, "wb") as file:
         file.write(request.data['file'].file.read())
-    image = PetImage.objects.create(image=file_path)
+
+    image = PetImage.objects.create(image=f"{settings.BASE_URL}/{file_path}", pet=pet)
     serializer = PetImageSerializer(image, context={"request": request})
     return Response(serializer.data)
-
-
-@api_view(http_method_names=["get"])
-def handle(request):
-    has_photos = True
-    pets = Pet.objects.all()
-    if has_photos == "True":
-        pets = pets.filter(photos__isnull=False)
-    elif has_photos == "False":
-        pets = pets.filter(photos__isnull=True)
-    else:
-        print(f"has_photos can be only True or False not '{has_photos}'")
-    pets = pets.distinct()
-    # print(self.request)
-    serializer = PetSerializer(pets, many=True)
-    response = []
-    for obj in list(serializer.data):
-        obj = dict(obj)
-        if obj["photos"]:
-            obj["photos"] = dict(list(obj["photos"]))
-        response.append(obj)
-
-    print(serializers.serialize("json", pets))
-    # self.stdout.write(json.loads(serializer.data))
 
 
 class PetImageViewSet(viewsets.ModelViewSet):

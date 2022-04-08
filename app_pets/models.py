@@ -27,4 +27,4 @@ class Pet(models.Model):
 class PetImage(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     pet = models.ForeignKey(Pet, blank=True, null=True, on_delete=models.CASCADE, related_name="photos")
-    image = models.ImageField(upload_to='images/', blank=True)
+    image = models.CharField(max_length=256, null=True, blank=True)

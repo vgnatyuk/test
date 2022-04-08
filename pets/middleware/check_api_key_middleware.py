@@ -1,5 +1,4 @@
 from django.http import HttpResponse
-from rest_framework.exceptions import NotAuthenticated
 
 from pets import settings
 
